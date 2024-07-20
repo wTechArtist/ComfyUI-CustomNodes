@@ -13,6 +13,44 @@ import os
 import subprocess
 import sys
 import torch
+import torch
+
+import os
+import sys
+import json
+import hashlib
+import traceback
+import math
+import time
+import random
+import logging
+import uuid
+
+from PIL import Image, ImageOps, ImageSequence, ImageFile,UnidentifiedImageError
+from PIL.PngImagePlugin import PngInfo
+
+import numpy as np
+import safetensors.torch
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
+
+import comfy.diffusers_load
+import comfy.samplers
+import comfy.sample
+import comfy.sd
+import comfy.utils
+import comfy.controlnet
+
+import comfy.clip_vision
+
+import comfy.model_management
+from comfy.cli_args import args
+
+import importlib
+
+import folder_paths
+import latent_preview
+import node_helpers
 
 class cstr(str):
     class color:
@@ -201,4 +239,101 @@ class Image_Blending_Mode_Mask:
         out_image = Image.composite(img_a, out_image, blend_mask)
 
         return (pil2tensor(out_image), )
-  
+
+
+class LoadImage_Bool:
+    DEFAULT_IMAGE_NAME = "{}.jpg".format(uuid.uuid4())
+
+    @classmethod
+    def INPUT_TYPES(s):
+        input_dir = folder_paths.get_input_directory()
+        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        if not files:
+            default_image_path = os.path.join(input_dir, LoadImage_Bool.DEFAULT_IMAGE_NAME)
+            LoadImage_Bool._generate_default_image(default_image_path)
+            files = [LoadImage_Bool.DEFAULT_IMAGE_NAME]
+        return {"required": {"image": (sorted(files), {"image_upload": True})}}
+
+    CATEGORY = "image"
+
+    RETURN_TYPES = ("IMAGE", "MASK", "BOOLEAN")
+    FUNCTION = "load_image"
+
+    def load_image(self, image=DEFAULT_IMAGE_NAME):
+        if not image or image == LoadImage_Bool.DEFAULT_IMAGE_NAME:
+            return self._default_response()
+
+        try:
+            image_path = folder_paths.get_annotated_filepath(image)
+            img = node_helpers.pillow(Image.open, image_path)
+
+            output_images = []
+            output_masks = []
+            w, h = None, None
+
+            excluded_formats = ['MPO']
+
+            for i in ImageSequence.Iterator(img):
+                i = node_helpers.pillow(ImageOps.exif_transpose, i)
+
+                if i.mode == 'I':
+                    i = i.point(lambda i: i * (1 / 255))
+                image = i.convert("RGB")
+
+                if len(output_images) == 0:
+                    w = image.size[0]
+                    h = image.size[1]
+
+                if image.size[0] != w or image.size[1] != h:
+                    continue
+
+                image = np.array(image).astype(np.float32) / 255.0
+                image = torch.from_numpy(image)[None,]
+                if 'A' in i.getbands():
+                    mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+                    mask = 1. - torch.from_numpy(mask)
+                else:
+                    mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
+                output_images.append(image)
+                output_masks.append(mask.unsqueeze(0))
+
+            if len(output_images) > 1 and img.format not in excluded_formats:
+                output_image = torch.cat(output_images, dim=0)
+                output_mask = torch.cat(output_masks, dim=0)
+            else:
+                output_image = output_images[0]
+                output_mask = output_masks[0]
+
+            return (output_image, output_mask, True)
+
+        except Exception as e:
+            return self._default_response()
+
+    def _default_response(self):
+        black_image = torch.zeros((1, 64, 64, 3), dtype=torch.float32, device="cpu")
+        black_mask = torch.zeros((1, 64, 64), dtype=torch.float32, device="cpu")
+        return (black_image, black_mask, False)
+
+    @classmethod
+    def IS_CHANGED(s, image=DEFAULT_IMAGE_NAME):
+        if not image or image == LoadImage_Bool.DEFAULT_IMAGE_NAME:
+            return False
+        image_path = folder_paths.get_annotated_filepath(image)
+        m = hashlib.sha256()
+        with open(image_path, 'rb') as f:
+            m.update(f.read())
+        return m.digest().hex()
+
+    @classmethod
+    def VALIDATE_INPUTS(s, image=DEFAULT_IMAGE_NAME):
+        if not image or image == LoadImage_Bool.DEFAULT_IMAGE_NAME:
+            return True
+        if not folder_paths.exists_annotated_filepath(image):
+            return "Invalid image file: {}".format(image)
+        return True
+
+    @staticmethod
+    def _generate_default_image(filepath):
+        # Create a default black image (64x64)
+        black_image = Image.new("RGB", (1, 1), (0, 0, 0))
+        black_image.save(filepath)
