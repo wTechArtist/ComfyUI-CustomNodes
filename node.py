@@ -337,3 +337,55 @@ class LoadImage_Bool:
         # Create a default black image (64x64)
         black_image = Image.new("RGB", (1, 1), (0, 0, 0))
         black_image.save(filepath)
+
+
+class IPAdapter_Mad_Scientist_weight_type:
+    CATEGORY_KEYS = ['0layer', '1layer', '2layer', '3layer', '4layer', '5layer', '6layer', '7layer', '8layer', '9layer', '10layer', '11layer']
+    OPTIONS = {str(i): str(i) for i in range(0, 12)}
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                **cls.get_input_types_from_keys(cls.CATEGORY_KEYS),
+                "Random": (["Yes", "No"], {"default": "No"}),
+                "seed": ("INT", {"default": 0, "min": -1125899906842624, "max": 1125899906842624}),
+            }
+        }
+
+    @staticmethod
+    def get_input_types_from_keys(keys):
+        input_types = {}
+        for i, key in enumerate(keys):
+            # Hide the super key by not including it in the input_types dictionary
+            input_types[f"{key} Weight"] = ("FLOAT", {"default": 0.0, "min": -2.0, "max": 2.0, "step": 0.1})
+        return input_types
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("layer_weights",)
+    FUNCTION = "generate_prompt"
+    CATEGORY = "ipadapter"
+
+    def generate_prompt(self, **kwargs):
+        prompt_parts = {str(i): 0.0 for i in range(0, 12)}
+        for i, key in enumerate(self.CATEGORY_KEYS):
+            # Since the super key is hidden, we use the index to find the corresponding weight
+            weight_key = f"{key} Weight"
+            if weight_key in kwargs and kwargs[weight_key] is not None:
+                weight = kwargs[weight_key]
+                prompt_parts[str(i)] = weight
+        
+        if kwargs.get("Random") == "Yes":
+            for key in self.CATEGORY_KEYS:
+                options = list(self.OPTIONS.keys())
+                random_choice = random.choice(options)
+                weight_key = f"{key} Weight"
+                if prompt_parts[str(int(random_choice))] == 0.0:
+                    weight = random.uniform(-2.0, 2.0)
+                    prompt_parts[random_choice] = weight
+
+        layer_weights = ','.join(f"{k}:{int(v)}" if v in {-2.0, -1.0, 0.0, 1.0, 2.0} else f"{k}:{v:.1f}" for k, v in prompt_parts.items())
+        return (layer_weights,)
