@@ -242,7 +242,7 @@ class Image_Blending_Mode_Mask:
 
 
 class LoadImage_Bool:
-    DEFAULT_IMAGE_NAME = "{}.jpg".format(uuid.uuid4())
+    DEFAULT_IMAGE_NAME = "custom_nodes_empty.jpg"
 
     @classmethod
     def INPUT_TYPES(s):
