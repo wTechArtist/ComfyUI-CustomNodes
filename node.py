@@ -25,7 +25,7 @@ import time
 import random
 import logging
 import uuid
-
+# from ..ComfyUI_IPAdapter_plus import IPAdapterPlus
 from PIL import Image, ImageOps, ImageSequence, ImageFile,UnidentifiedImageError
 from PIL.PngImagePlugin import PngInfo
 
@@ -51,6 +51,17 @@ import importlib
 import folder_paths
 import latent_preview
 import node_helpers
+
+# 获取当前文件的目录
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 获取项目根目录的绝对路径
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+# 将项目根目录添加到 sys.path
+if project_root not in sys.path:
+    sys.path.append(project_root)
+# 导入 IPAdapterPlus 模块
+from custom_nodes.ComfyUI_IPAdapter_plus import IPAdapterPlus
+
 
 class cstr(str):
     class color:
@@ -389,3 +400,45 @@ class IPAdapter_Mad_Scientist_weight_type:
 
         layer_weights = ','.join(f"{k}:{int(v)}" if v in {-2.0, -1.0, 0.0, 1.0, 2.0} else f"{k}:{v:.1f}" for k, v in prompt_parts.items())
         return (layer_weights,)
+    
+WEIGHT_TYPES = ["linear", "ease in", "ease out", 'ease in-out', 'reverse in-out', 'weak input', 'weak output', 'weak middle', 'strong middle', 'style transfer', 'composition', 'strong style transfer', 'style and composition', 'style transfer precise', 'composition precise']
+
+class IPAdapter_FaceID_Bool():
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "model": ("MODEL", ),
+                "ipadapter": ("IPADAPTER", ),
+                "image": ("IMAGE",),
+                "weight": ("FLOAT", { "default": 1.0, "min": -1, "max": 3, "step": 0.05 }),
+                "weight_faceidv2": ("FLOAT", { "default": 1.0, "min": -1, "max": 5.0, "step": 0.05 }),
+                "weight_type": (WEIGHT_TYPES, ),
+                "combine_embeds": (["concat", "add", "subtract", "average", "norm average"],),
+                "start_at": ("FLOAT", { "default": 0.0, "min": 0.0, "max": 1.0, "step": 0.001 }),
+                "end_at": ("FLOAT", { "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.001 }),
+                "embeds_scaling": (['V only', 'K+V', 'K+V w/ C penalty', 'K+mean(V) w/ C penalty'], ),
+            },
+            "optional": {
+                "image_negative": ("IMAGE",),
+                "attn_mask": ("MASK",),
+                "clip_vision": ("CLIP_VISION",),
+                "insightface": ("INSIGHTFACE",),
+            }
+        }
+
+    CATEGORY = "ipadapter/faceid"
+    RETURN_TYPES = ("MODEL","IMAGE","BOOLEAN")
+    RETURN_NAMES = ("MODEL", "face_image", "bool",)
+    FUNCTION = "apply_ipadapter_bool"
+
+    def apply_ipadapter_bool(self, model, ipadapter, start_at=0.0, end_at=1.0, weight=1.0, weight_style=1.0, weight_composition=1.0, expand_style=False, weight_type="linear", combine_embeds="concat", weight_faceidv2=None, image=None, image_style=None, image_composition=None, image_negative=None, clip_vision=None, attn_mask=None, insightface=None, embeds_scaling='V only', layer_weights=None, ipadapter_params=None, encode_batch_size=0, style_boost=None, composition_boost=None, enhance_tiles=1, enhance_ratio=1.0):
+        try:
+            # 实例化 IPAdapterFaceID 类
+            ip_adapter_face_id = IPAdapterPlus.IPAdapterFaceID()
+            # 调用 apply_ipadapter 方法
+            work_model, face_image = ip_adapter_face_id.apply_ipadapter(model, ipadapter, start_at, end_at, weight, weight_style, weight_composition, expand_style, weight_type, combine_embeds, weight_faceidv2, image, image_style, image_composition, image_negative, clip_vision, attn_mask, insightface, embeds_scaling, layer_weights, ipadapter_params, encode_batch_size, style_boost, composition_boost, enhance_tiles, enhance_ratio)
+            return (work_model, face_image, True)
+        except Exception as e:
+            print(f"Error: {e}")
+            return (model, image, False)
