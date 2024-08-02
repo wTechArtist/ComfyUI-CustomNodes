@@ -198,7 +198,7 @@ class Image_Blending_Mode_Mask:
     RETURN_NAMES = ("image",)
     FUNCTION = "image_blending_mode_mask"
 
-    CATEGORY = "Image/Image"
+    CATEGORY = "WWL"
 
     def image_blending_mode_mask(self, image_a, image_b, mode='add', blend_percentage=1.0, mask=None):
 
@@ -269,6 +269,7 @@ class LoadImage_Bool:
 
     RETURN_TYPES = ("IMAGE", "MASK", "BOOLEAN")
     FUNCTION = "load_image"
+    CATEGORY = "WWL"
 
     def load_image(self, image=DEFAULT_IMAGE_NAME):
         if not image or image == LoadImage_Bool.DEFAULT_IMAGE_NAME:
@@ -378,7 +379,7 @@ class IPAdapter_Mad_Scientist_weight_type:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("layer_weights",)
     FUNCTION = "generate_prompt"
-    CATEGORY = "ipadapter"
+    CATEGORY = "WWL"
 
     def generate_prompt(self, **kwargs):
         prompt_parts = {str(i): 0.0 for i in range(0, 12)}
@@ -431,6 +432,7 @@ class IPAdapter_FaceID_Bool():
     RETURN_TYPES = ("MODEL","IMAGE","BOOLEAN")
     RETURN_NAMES = ("MODEL", "face_image", "bool",)
     FUNCTION = "apply_ipadapter_bool"
+    CATEGORY = "WWL"
 
     def apply_ipadapter_bool(self, model, ipadapter, start_at=0.0, end_at=1.0, weight=1.0, weight_style=1.0, weight_composition=1.0, expand_style=False, weight_type="linear", combine_embeds="concat", weight_faceidv2=None, image=None, image_style=None, image_composition=None, image_negative=None, clip_vision=None, attn_mask=None, insightface=None, embeds_scaling='V only', layer_weights=None, ipadapter_params=None, encode_batch_size=0, style_boost=None, composition_boost=None, enhance_tiles=1, enhance_ratio=1.0):
         try:
