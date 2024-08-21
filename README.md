@@ -13,6 +13,10 @@ IPAdapter FaceID With Bool
 GPT4 WWL
 ![image](https://github.com/user-attachments/assets/59919026-ed5d-43a4-b31c-1e7ae7a582a9)
 
+Load Lora With Shared
+![image](https://github.com/user-attachments/assets/021e83be-b396-4413-8518-b45e3f23cddb)
+
+
 
 
 
