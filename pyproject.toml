@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-customnodes"
+description = "Nodes:Image Blending Mode Mask"
+version = "1.0.0"
+license = "LICENSE"
+dependencies = ["numpy", "pilgram"]
+
+[project.urls]
+Repository = "https://github.com/wTechArtist/ComfyUI-CustomNodes"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-CustomNodes"
+Icon = ""
